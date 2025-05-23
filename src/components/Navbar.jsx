@@ -40,7 +40,6 @@ const Navbar = () => {
         const response = await axios.get(BASE_URL + "/recipes/get-favorites", {
           withCredentials: true,
         });
-        console.log("response in get favorite recipes", response.data.favorites);
         dispatch(setFavoriteRecipes(response.data.favorites));
       } catch (error) {
         console.log("Error fetching favorite recipes:", error);
@@ -49,6 +48,7 @@ const Navbar = () => {
         );
       }
     }
+    navigate("/");
   };
 
   return (

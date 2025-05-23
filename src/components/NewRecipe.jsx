@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Formik, Form, Field, FieldArray } from "formik";
 import axios from "axios";
 import { BASE_URL } from "../../constants";
@@ -13,19 +13,37 @@ const initialValues = {
   cookingTime: "",
   servings: "",
   difficultyLevel: "",
-  recipeTag: "",
+  recipeTag: [],
   recipeMealType: "",
   recipeIngredients: [""],
   recipeInstructions: [""],
 };
 
+const TAG_OPTIONS = [
+  "Vegan",
+  "Vegetarian",
+  "Non-Vegetarian",
+  "Gluten-Free",
+  "Dairy-Free",
+  "Low-Calorie",
+  "High-Protein",
+  "Quick Meal",
+  "Healthy",
+];
+
 const NewRecipe = () => {
   const user = useSelector((store) => store.user);
   const navigate = useNavigate();
+  const [currentTagSelection, setCurrentTagSelection] = useState("");
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      const payload = { ...values, recipeAuthorId: user?._id };
+      const payload = {
+        ...values,
+        recipeTag: Array.isArray(values.recipeTag) ? values.recipeTag : [],
+        recipeAuthorId: user?._id,
+      };
+      console.log("Submitting payload:", payload);
       const response = await axios.post(
         BASE_URL + "/recipes/add-recipe",
         payload,
@@ -33,10 +51,15 @@ const NewRecipe = () => {
           withCredentials: true,
         }
       );
-
+      console.log("Recipe creation response:", response.data);
       resetForm();
+      setCurrentTagSelection("");
+      navigate("/");
     } catch (error) {
-      console.error("create recipe error ", error);
+      console.error(
+        "create recipe error ",
+        error.response ? error.response.data : error.message
+      );
     } finally {
       setSubmitting(false);
     }
@@ -69,7 +92,7 @@ const NewRecipe = () => {
       </div>
       <h2 className="text-2xl font-bold mb-6 text-center">Create New Recipe</h2>
       <Formik initialValues={initialValues} onSubmit={handleSubmit}>
-        {({ values, isSubmitting }) => (
+        {({ values, isSubmitting, setFieldValue }) => (
           <Form className="flex flex-col gap-4">
             <label className="font-semibold" htmlFor="recipeTitle">
               Recipe Title
@@ -161,40 +184,84 @@ const NewRecipe = () => {
                 </Field>
               </div>
             </div>
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="font-semibold mb-1 block" htmlFor="recipeTag">
-                  Tags
-                </label>
-                <Field
-                  id="recipeTag"
-                  name="recipeTag"
-                  className="input input-bordered w-full"
-                  placeholder="Tags (comma separated)"
-                />
+            <div>
+              <label className="font-semibold mb-1 block">Tags</label>
+              <div className="mb-2 flex flex-wrap gap-2">
+                {Array.isArray(values.recipeTag) &&
+                  values.recipeTag.map((tag, index) => (
+                    <div
+                      key={index}
+                      className="badge badge-primary badge-lg gap-2"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs btn-circle"
+                        onClick={() => {
+                          const newTags = [...values.recipeTag];
+                          newTags.splice(index, 1);
+                          setFieldValue("recipeTag", newTags);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
               </div>
-              <div className="flex-1">
-                <label
-                  className="font-semibold mb-1 block"
-                  htmlFor="recipeMealType"
+              <div className="flex gap-2 items-center">
+                <select
+                  value={currentTagSelection}
+                  onChange={(e) => setCurrentTagSelection(e.target.value)}
+                  className="select select-bordered flex-grow"
                 >
-                  Meal Type
-                </label>
-                <Field
-                  as="select"
-                  id="recipeMealType"
-                  name="recipeMealType"
-                  className="select select-bordered w-full"
+                  <option value="">Select a tag</option>
+                  {TAG_OPTIONS.map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (
+                      currentTagSelection &&
+                      !values.recipeTag.includes(currentTagSelection)
+                    ) {
+                      setFieldValue("recipeTag", [
+                        ...values.recipeTag,
+                        currentTagSelection,
+                      ]);
+                      setCurrentTagSelection("");
+                    }
+                  }}
+                  disabled={!currentTagSelection}
                 >
-                  <option value="">Select Meal Type</option>
-                  <option value="Breakfast">Breakfast</option>
-                  <option value="Lunch">Lunch</option>
-                  <option value="Snack">Snack</option>
-                  <option value="Dinner">Dinner</option>
-                </Field>
+                  Add
+                </button>
               </div>
             </div>
-            {/* Ingredients */}
+            <div>
+              <label
+                className="font-semibold mb-1 block"
+                htmlFor="recipeMealType"
+              >
+                Meal Type
+              </label>
+              <Field
+                as="select"
+                id="recipeMealType"
+                name="recipeMealType"
+                className="select select-bordered w-full"
+              >
+                <option value="">Select Meal Type</option>
+                <option value="Breakfast">Breakfast</option>
+                <option value="Lunch">Lunch</option>
+                <option value="Snack">Snack</option>
+                <option value="Dinner">Dinner</option>
+              </Field>
+            </div>
             <div>
               <label className="font-semibold">Ingredients</label>
               <FieldArray name="recipeIngredients">
@@ -229,7 +296,6 @@ const NewRecipe = () => {
                 )}
               </FieldArray>
             </div>
-            {/* Instructions */}
             <div>
               <label className="font-semibold">Instructions</label>
               <FieldArray name="recipeInstructions">

@@ -83,12 +83,9 @@ const RecipeCard = ({ recipe }) => {
           Prep: {preparationTime} min | Cook: {cookingTime} min
         </p>
         <p>{getTruncatedDescription(recipeDescription)}</p>
-        <div className="card-actions justify-end mt-2">
+        <div className="card-actions justify-end">
           {recipeTag?.map((tag, idx) => (
-            <div
-              key={idx}
-              className="badge badge-sm badge-outline text-xs py-1 px-1.5"
-            >
+            <div key={idx} className="badge badge-outline">
               {tag}
             </div>
           ))}
