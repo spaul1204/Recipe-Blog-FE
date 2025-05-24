@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { SearchIcon, FilterIcon } from "../assets/icons";
 import useDebounceHook from "../../utils/customHooks/useDebounceHook";
 
+const ITEMS_PER_PAGE = 9;
+
 const Feed = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -20,6 +22,7 @@ const Feed = () => {
     status: favoriteStatus,
   } = useSelector((store) => store.favoriteRecipes);
 
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredRecipes, setFilteredRecipes] = useState([]);
   const [filters, setFilters] = useState({
@@ -32,6 +35,17 @@ const Feed = () => {
     searchQuery,
     delay: 500,
   });
+
+  // Reset current page when filters, search, or favorite view changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    showOnlyFavorites,
+    filters,
+    debouncedSearchQuery,
+    allRecipes,
+    favoriteRecipeItems,
+  ]);
 
   useEffect(() => {
     if (showOnlyFavorites) {
@@ -49,7 +63,6 @@ const Feed = () => {
 
   useEffect(() => {
     if (showOnlyFavorites) return;
-
     if (filters.mealType || filters.difficulty || filters.tags.length > 0) {
       filterRecipesHandler();
     } else if (!debouncedSearchQuery) {
@@ -61,9 +74,7 @@ const Feed = () => {
     try {
       const response = await axios.get(BASE_URL + "/recipes/search-recipes", {
         withCredentials: true,
-        params: {
-          searchQuery: debouncedSearchQuery,
-        },
+        params: { searchQuery: debouncedSearchQuery },
       });
       setFilteredRecipes(response?.data?.data);
     } catch (error) {
@@ -100,10 +111,7 @@ const Feed = () => {
   };
 
   const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }));
+    setFilters((prev) => ({ ...prev, [filterType]: value }));
   };
 
   useEffect(() => {
@@ -113,16 +121,26 @@ const Feed = () => {
     }
   }, [user, showOnlyFavorites]);
 
-  let recipesToDisplay = [];
+  let sourceRecipesList = [];
   if (showOnlyFavorites) {
-    recipesToDisplay = favoriteRecipeItems || [];
+    sourceRecipesList = favoriteRecipeItems || [];
   } else if (filteredRecipes?.length > 0) {
-    recipesToDisplay = filteredRecipes;
+    sourceRecipesList = filteredRecipes;
   } else {
-    recipesToDisplay = allRecipes || [];
+    sourceRecipesList = allRecipes || [];
   }
 
-  const isLoadingFavorites = favoriteStatus === "loading";
+  // Pagination logic
+  const totalPages = Math.ceil(sourceRecipesList.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentRecipesToDisplay = sourceRecipesList.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const isLoading = favoriteStatus === "loading" && showOnlyFavorites;
 
   return (
     <>
@@ -140,7 +158,7 @@ const Feed = () => {
         </h1>
         <p className="text-lg text-center max-w-2xl mt-4 whitespace-pre-line">
           {showOnlyFavorites
-            ? isLoadingFavorites
+            ? isLoading
               ? "Loading your favorite recipes..."
               : "Here are all the recipes you've marked as favorites!"
             : "Explore a collection of mouthwatering recipes crafted with love.\nFrom quick meals to gourmet delights, find your next culinary adventure."}
@@ -224,10 +242,10 @@ const Feed = () => {
             showOnlyFavorites ? "w-full md:w-2/3" : "w-2/3"
           } grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mx-auto mb-4`}
         >
-          {isLoadingFavorites && showOnlyFavorites ? (
+          {isLoading && showOnlyFavorites ? (
             <p className="text-center col-span-full">Loading favorites...</p>
-          ) : recipesToDisplay?.length > 0 ? (
-            recipesToDisplay.map((recipe) => (
+          ) : currentRecipesToDisplay?.length > 0 ? (
+            currentRecipesToDisplay.map((recipe) => (
               <RecipeCard key={recipe._id} recipe={recipe} />
             ))
           ) : (
@@ -246,6 +264,26 @@ const Feed = () => {
           )}
         </div>
       </div>
+
+      {/* PAGINATION START */}
+      {!isLoading && totalPages > 1 && (
+        <div className="flex justify-center w-full mt-8 mb-4">
+          <div className="btn-group">
+            {[...Array(totalPages).keys()].map((page) => (
+              <button
+                key={page + 1}
+                className={`btn ${
+                  currentPage === page + 1 ? "btn-active" : ""
+                }`}
+                onClick={() => handlePageChange(page + 1)}
+              >
+                {page + 1}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* PAGINATION END */}
     </>
   );
 };
