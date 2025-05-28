@@ -1,0 +1,26 @@
+# Ignore node_modules, as dependencies will be installed during the Docker build
+node_modules
+
+# Ignore build output directory, as it will be generated during the build
+dist
+build
+
+# Ignore .env files, as environment variables should be passed to the container at runtime
+.env
+
+# Ignore Docker-specific files
+Dockerfile
+.dockerignore
+
+# Ignore Git-specific files
+.git
+.gitignore
+
+# Ignore IDE-specific files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw? 
