@@ -98,6 +98,7 @@ const Feed = () => {
     }
   };
 
+  // Get all recipes
   const getRecipes = async () => {
     if (showOnlyFavorites) return;
     try {
